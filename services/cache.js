@@ -36,3 +36,9 @@ mongoose.Query.prototype.exec = async function () {
 
     return result
 }
+
+module.exports = {
+    clearCache(key) {
+        redisClient.del(JSON.stringify(key))
+    }
+}
