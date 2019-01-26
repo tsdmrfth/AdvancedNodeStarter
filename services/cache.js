@@ -3,12 +3,13 @@ const redis = require('redis')
 const redisUrl = 'redis://127.0.0.1:6379'
 const redisClient = redis.createClient(redisUrl)
 const util = require('util')
-redisClient.get = util.promisify(redisClient.get)
+redisClient.hget = util.promisify(redisClient.hget)
 
 const exec = mongoose.Query.prototype.exec
 
-mongoose.Query.prototype.cache = function () {
+mongoose.Query.prototype.cache = function (options = {}) {
     this.cacheData = true
+    this.rootCacheKey = JSON.stringify(options.key || '')
     return this
 }
 
@@ -21,7 +22,7 @@ mongoose.Query.prototype.exec = async function () {
         collection: this.mongooseCollection.name
     }))
 
-    const cachedValue = await redisClient.get(cacheKey)
+    const cachedValue = await redisClient.hget(this.rootCacheKey, cacheKey)
 
     if (cachedValue) {
         const doc = JSON.parse(cachedValue)
@@ -31,7 +32,7 @@ mongoose.Query.prototype.exec = async function () {
     }
 
     const result = await exec.apply(this, arguments)
-    redisClient.set(cacheKey, JSON.stringify(result))
+    redisClient.hset(this.rootCacheKey, cacheKey, JSON.stringify(result))
 
     return result
 }
