@@ -7,7 +7,16 @@ redisClient.get = util.promisify(redisClient.get)
 
 const exec = mongoose.Query.prototype.exec
 
+mongoose.Query.prototype.cache = function () {
+    this.cacheData = true
+    return this
+}
+
 mongoose.Query.prototype.exec = async function () {
+    if (!this.cacheData) {
+        return exec.apply(this, arguments)
+    }
+
     const cacheKey = JSON.stringify(Object.assign({}, this.getQuery(), {
         collection: this.mongooseCollection.name
     }))
